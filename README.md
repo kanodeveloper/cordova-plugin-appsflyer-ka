@@ -30,18 +30,21 @@ In order for us to provide optimal support, we would kindly ask you to submit an
 - [API Methods](#api-methods) 
  - [initSdk](#initSdk) 
  - [trackEvent](#trackEvent)
+ - [setCollectIMEI](#initSdk)(Android only)
+ - [setCollectAndroidID](#initSdk)(Android only)
  - [deviceTrackingDisabled](#deviceTrackingDisabled)
  - [setCurrencyCode](#setCurrencyCode)
  - [setAppUserId](#setAppUserId)
+ - [stopTracking](#stopTracking)
+ - [registerOnAppOpenAttribution](#registerOnAppOpenAttribution)
  - [enableUninstallTracking](#enableUninstallTracking)
- - [setGCMProjectID](#setGCMProjectID)
  - [updateServerUninstallToken](#updateServerUninstallToken)
  - [getAppsFlyerUID](#getAppsFlyerUID)
  - [setAppInviteOneLinkID](#setAppInviteOneLinkID)
  - [generateInviteLink](#generateInviteLink)
  - [trackCrossPromotionImpression](#trackCrossPromotionImpression)
  - [trackAndOpenStore](#trackAndOpenStore)
-- [Deep linking Tracking](#deep-linking-tracking) 
+ - [Deep linking Tracking](#deep-linking-tracking) 
  - [Android](#dl-android)
  - [iOS URL Types](#dl-ios)
  - [iOS Universal Links](#dl-ul)
@@ -56,8 +59,8 @@ In order for us to provide optimal support, we would kindly ask you to submit an
 
 ### <a id="plugin-build-for"> This plugin is built for
 
-- iOS AppsFlyerSDK **v4.8.1**
-- Android AppsFlyerSDK **v4.8.3**
+- iOS AppsFlyerSDK **v4.8.4**
+- Android AppsFlyerSDK **v4.8.11**
 
 
 ## <a id="installation-using-cli"> Installation using CLI:
@@ -69,6 +72,22 @@ or directly from git:
 
 ```
 $ cordova plugin add https://github.com/AppsFlyerSDK/cordova-plugin-appsflyer-sdk.git
+```
+
+
+For Google Install referrer support:
+
+Open the build.gradle file for your application. Make sure that the repositories section includes a maven section with the "https://maven.google.com" endpoint. For example:
+
+```
+allprojects {
+    repositories {
+        jcenter()
+        maven {
+            url "https://maven.google.com"
+        }
+    }
+}
 ```
 
 ## <a id="manual-installation"> Manual installation:
@@ -166,7 +185,9 @@ document.addEventListener("deviceready", function(){
 ```
 
 
+
 ##<a id="api-methods"> API Methods
+
 
 ---
 
@@ -177,7 +198,7 @@ initialize the SDK.
 | parameter   | type                        | description  |
 | ----------- |-----------------------------|--------------|
 | `options`   | `Object`                    |   SDK configuration           |
-| `onSuccess` | `(message: string)=>void` | Success callback - called after successfull SDK initialization. (optional)|
+| `onSuccess` | `(message: string)=>void` | Success callback - called after successful SDK initialization. (optional)|
 | `onError`   | `(message: string)=>void` | Error callback - called when error occurs during initialization. (optional)|
 
 **`options`**
@@ -187,13 +208,35 @@ initialize the SDK.
 | `devKey`   |`string` |         |   [Appsflyer Dev key](https://support.appsflyer.com/hc/en-us/articles/207032126-AppsFlyer-SDK-Integration-Android)    |
 | `appId`    |`string` |        | [Apple Application ID](https://support.appsflyer.com/hc/en-us/articles/207032066-AppsFlyer-SDK-Integration-iOS) (for iOS only) |
 | `isDebug`  |`boolean`| `false` | debug mode (optional)|
+| `collectIMEI`   | `boolean` | `false` |opt-out of collection of IMEI |
+| `collectAndroidID`   | `boolean` | `false` |opt-out of collection of collectAndroidID |
 | `onInstallConversionDataListener`  |`boolean`| `false` | Accessing AppsFlyer Attribution / Conversion Data from the SDK (Deferred Deeplinking). Read more: [Android](http://support.appsflyer.com/entries/69796693-Accessing-AppsFlyer-Attribution-Conversion-Data-from-the-SDK-Deferred-Deep-linking-), [iOS](http://support.appsflyer.com/entries/22904293-Testing-AppsFlyer-iOS-SDK-Integration-Before-Submitting-to-the-App-Store-). AppsFlyer plugin will return attribution data in `onSuccess` callback. 
 
 *Example:*
 
 ```javascript
 var onSuccess = function(result) {
-     //handle result
+  //handle result
+  /*
+  {
+  "status": "success",
+  "type": "onInstallConversionDataLoaded",
+  "data": {
+    "af_dp": "https://ionic.fess.onelink.me",
+    "af_click_lookback": "7d",
+    "install_time": "2018-07-05 08:06:50.828",
+    "cost_cents_USD": "0",
+    "iscache": "true",
+    "media_source": "someMedia",
+    "click_time": "2018-07-05 08:06:02.956",
+    "orig_cost": "0.0",
+    "campaign": "boo",
+    "key": "val",
+    "af_status": "Non-organic",
+    "is_first_launch": "false"
+  }
+}
+*/   
 };
 
 function onError(err) {
@@ -281,9 +324,72 @@ Setting your own Custom ID enables you to cross-reference your own unique ID wit
 ```javascript
 window.plugins.appsFlyer.setAppUserId(userId);
 ```
+
 ---
 
 
+##### <a id="stopTracking"> **`stopTracking(isStopTracking): void`**
+
+
+Setting your own Custom ID enables you to cross-reference your own unique ID with AppsFlyer’s user ID and the other devices’ IDs. This ID is available in AppsFlyer CSV reports along with postbacks APIs for cross-referencing with you internal IDs.
+ 
+**Note:** The ID must be set during the first launch of the app at the SDK initialization. The best practice is to call this API during the `deviceready` event, where possible.
+
+
+| parameter   | type                        | description |
+| ----------- |-----------------------------|--------------|
+| `isStopTracking`   | `boolean`                      |In some extreme cases you might want to shut down all SDK tracking due to legal and privacy compliance. This can be achieved with the isStopTracking API. Once this API is invoked, our SDK will no longer communicate with our servers and stop functioning. |
+
+*Example:*
+
+```javascript
+window.plugins.appsFlyer.stopTracking(true);
+```
+
+In any event, the SDK can be reactivated by calling the same API, but to pass false.
+
+---
+
+
+##### <a id="registerOnAppOpenAttribution"> **`registerOnAppOpenAttribution(onSuccess, onError): void`**
+
+
+
+
+| parameter   | type                        | description |
+| ----------- |-----------------------------|--------------|
+| `onSuccess` | `(message: stringifed JSON)=>void` | Success callback - called after receiving data on App Open Attribution.|
+| `onError`   | `(message: stringifed JSON)=>void` | Error callback - called when error occurs.|
+
+*Example:*
+
+```javascript
+window.plugins.appsFlyer.registerOnAppOpenAttribution(function        
+   onAppOpenAttributionSuccess(res){
+     /*
+     {
+    "data": {
+      "af_deeplink": "true",
+      "campaign": "boo",
+      "key": "val",
+      "media_source": "someMedia",
+      "install_time": "2018-07-12 13:20:19",
+      "af_status": "Non-organic",
+      "path": "",
+      "scheme": "https",
+      "host": "ionic.fess.onelink.me"
+    },
+    "type": "onAppOpenAttribution",
+    "status": "success"
+  }
+     */
+   }, 
+   function onAppOpenAttributionError(err){
+    //...
+ });
+```
+
+---
 
 
 ##### <a id="enableUninstallTracking"> **`enableUninstallTracking(token, onSuccess, onError): void`** 
@@ -294,24 +400,13 @@ Enables app uninstall tracking.
 | parameter   | type                        | description |
 | ----------- |-----------------------------|--------------|
 | `FCM/GCM ProjectNumber`   | `String`    | GCM/FCM ProjectNumber |
-| `onSuccess` | `(message: string)=>void` | Success callback - called after successfull register uninstall. (optional)|
+| `onSuccess` | `(message: string)=>void` | Success callback - called after successful register uninstall. (optional)|
 | `onError`   | `(message: string)=>void` | Error callback - called when error occurs during register uninstall. (optional)|
 
 
 ---
 
-##### <a id="setGCMProjectID"> **`setGCMProjectID(GCMProjectNumber): void`** *Deprecated*
 
-AppsFlyer requires a Google Project Number to enable uninstall tracking.
-<a href="https://support.appsflyer.com/hc/en-us/articles/208004986-Android-Uninstall-Tracking">More Information</a>
-
-
-| parameter   | type                        | description |
-| ----------- |-----------------------------|--------------|
-| `GCMProjectNumber`   | `String`           | GCM ProjectNumber |
-
-
----
 
 ##### <a id="updateServerUninstallToken"> **`updateServerUninstallToken("token"): void`** 
 
